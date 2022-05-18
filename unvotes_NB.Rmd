@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "United Nations General Assembly Voting Data from  1946 to 2020"
 output: html_notebook
 ---
 
@@ -21,8 +21,7 @@ head(un_raw)
 ```
 ```{r}
 # Select columns important to the objective of the project
-un_df = subset(un_raw, select = c(vote, Country, Countryname, year, session)) %>%
-  mutate(session = session + 1945) %>%
+un_df = subset(un_raw, select = c(vote, Country, Countryname, year)) %>%
   filter(vote <= 3)
 head(un_df)
 ```
@@ -32,26 +31,138 @@ glimpse(un_df)
 ```{r}
 vis_dat(un_df, warn_large_data = FALSE)
 ```
+```{r}
+ cat = un_df %>% 
+  mutate(vote_cat = as.factor(vote)) %>%
+  group_by(vote_cat) %>%
+  summarise(total  = n()) 
+cat
+```
 
 
 ```{r}
-summ_by_year = un_df %>% group_by(year) %>%
+perc_by_ctry = un_df %>% group_by(Countryname) %>%
   summarise(total = n(),
-            percent_vote_Yes = mean(vote == 1),
-            percent_Abstain = mean(vote == 2),
-            percent_vote_No = mean(vote == 3))
+            percent_vote_Yes = mean(vote == 1) * 100,
+            percent_Abstain = mean(vote == 2) * 100,
+            percent_vote_No = mean(vote == 3) * 100)
+perc_by_ctry
+```
+```{r}
+perc_by_yr = un_df %>% group_by(year) %>%
+  summarise(total = n(),
+            percent_vote_Yes = mean(vote == 1) * 100,
+            percent_Abstain = mean(vote == 2) * 100,
+            percent_vote_No = mean(vote == 3) * 100)
+perc_by_yr
+
+```
+```{r}
+perc_by_yr_ctry = un_df %>% group_by(Countryname, year) %>%
+  summarise(total = n(),
+            percent_vote_Yes = mean(vote == 1) * 100,
+            percent_Abstain = mean(vote == 2) * 100,
+            percent_vote_No = mean(vote == 3) * 100)
+perc_by_yr_ctry
+```
+```{r}
 
 ```
 
 ```{r}
-ggplot(summ_by_year, aes(year,  total)) +
-  geom_point()
+yes_vote = un_df %>% group_by(Countryname) %>%
+  filter(vote == 1) %>% 
+  summarise(total = n()) %>%
+  arrange((desc(total))) %>%
+  top_n(10)
+yes_vote 
+```
+```{r}
+yes_vote = un_df %>% group_by(Countryname) %>%
+  filter(vote == 1) %>% 
+  summarise(total = n())
+yes_vote %>% ggplot(aes(total)) + geom_histogram(bins = 60)
+```
+
+
+```{r}
+yes_vote = un_df %>% group_by(year) %>%
+  filter(vote == 1) %>% 
+  summarise(total = n())
+yes_vote %>% ggplot(aes(total)) + geom_histogram()
+```
+```{r}
+yes_vote = un_df %>% group_by(year, Countryname) %>%
+  filter(vote == 1) %>% 
+  summarise(total = n())
+ggplot(yes_vote, aes(year,  total)) +
+  geom_point() + geom_smooth()
 ```
 
 ```{r}
 ctry = c("Nigeria","Ghana","Egypt","Morocco","Ethiopia","Kenya","South Africa", "Namibia","Angola","Gabon", "United States of America", "France", "United Kingdom of Great Britain and Northern Ireland")
 
-sum_country = un_df %>% group_by(Countryname, year) %>%
+selected_country = un_df %>% group_by(Countryname) %>%
+  filter(Countryname %in% ctry) %>%
+  summarise(total = n(),
+            percent_vote_Yes = mean(vote == 1),
+            percent_ab = mean(vote == 2),
+            percent_vote_No = mean(vote == 3)) 
+selected_country
+```
+```{r}
+ggplot(selected_country, aes(Countryname,  total)) +
+  geom_point() + geom_smooth()
+
+```
+
+```{r}
+selected_country = un_df %>% group_by(year, Countryname) %>%
+  filter(Countryname %in% ctry) %>%
+  summarise(total = n(),
+            percent_vote_Yes = mean(vote == 1),
+            percent_ab = mean(vote == 2),
+            percent_vote_No = mean(vote == 3)) 
+
+
+ggplot(selected_country , aes(year, percent_vote_Yes, color=Countryname)) +
+  geom_line() 
+```
+```{r}
+ggplot(selected_country , aes(year, percent_vote_Yes)) +
+  geom_line() + 
+  facet_wrap(~Countryname, scales = "free_y")
+```
+```{r}
+Nigeria_Ghana = selected_country %>% filter(Countryname %in% c("Nigeria", "Ghana"))
+ggplot(Nigeria_Ghana , aes(year, percent_vote_Yes, color=Countryname)) +
+  geom_line()
+```
+```{r}
+Morocco_Egypt = selected_country %>% filter(Countryname %in% c("Morocco", "Egypt"))
+ggplot(Morocco_Egypt , aes(year, percent_vote_Yes, color=Countryname)) +
+  geom_line()
+```
+```{r}
+Kenya_Ethiopia = selected_country %>% filter(Countryname %in% c("Kenya", "Ethiopia"))
+ggplot(Kenya_Ethiopia , aes(year, percent_vote_Yes, color=Countryname)) +
+  geom_line()
+```
+```{r}
+South_Africa_Namibia = selected_country %>% filter(Countryname %in% c("South Africa", "Namibia"))
+ggplot(South_Africa_Namibia , aes(year, percent_vote_Yes, color=Countryname)) +
+  geom_line()
+```
+```{r}
+west = selected_country %>% filter(Countryname %in% c("United States of America", "France", "United Kingdom of Great Britain and Northern Ireland"))
+ggplot(west , aes(year, percent_vote_Yes, color=Countryname)) +
+  geom_line()
+```
+```{r}
+
+ctry = c("Nigeria","Ghana","Egypt","Morocco","Ethiopia","Kenya","South Africa", "Namibia","Angola","Gabon", "United States of America", "France", "United Kingdom of Great Britain and Northern Ireland")
+
+sum_country = un_df %>% group_by(year, Countryname) %>%
   filter(Countryname %in% ctry) %>%
   summarise(total = n(),
             percent_vote_Yes = mean(vote == 1),
@@ -59,40 +170,12 @@ sum_country = un_df %>% group_by(Countryname, year) %>%
             percent_vote_No = mean(vote == 3)) %>%
   arrange(desc(percent_vote_Yes))
 sum_country
+
+region <- c("West Africa", "West Africa", "North Africa", "North Africa", "East Africa", "East Africa", "Southern Africa", "Southern Africa", "Middle Africa", "Middle Africa", "America", "Europe",  "Europe")
+
+sum_cty_reg <- sum_country["region"] <- region 
+sum_country
 ```
-```{r}
-  ggplot(sum_country , aes(year, percent_vote_Yes, color=Countryname)) +
-  geom_line() 
-```
-```{r}
-ggplot(sum_country , aes(year, percent_vote_Yes)) +
-  geom_line() + 
-  facet_wrap(~Countryname, scales = "free_y")
-```
-```{r}
-Nigeria_Ghana = sum_country %>% filter(Countryname %in% c("Nigeria", "Ghana"))
-ggplot(Nigeria_Ghana , aes(year, percent_vote_Yes, color=Countryname)) +
-  geom_line()
-```
-```{r}
-Morocco_Egypt = sum_country %>% filter(Countryname %in% c("Morocco", "Egypt"))
-ggplot(Morocco_Egypt , aes(year, percent_vote_Yes, color=Countryname)) +
-  geom_line()
-```
-```{r}
-Kenya_Ethiopia = sum_country %>% filter(Countryname %in% c("Kenya", "Ethiopia"))
-ggplot(Kenya_Ethiopia , aes(year, percent_vote_Yes, color=Countryname)) +
-  geom_line()
-```
-```{r}
-South_Africa_Namibia = sum_country %>% filter(Countryname %in% c("South Africa", "Namibia"))
-ggplot(South_Africa_Namibia , aes(year, percent_vote_Yes, color=Countryname)) +
-  geom_line()
-```
-```{r}
-Angola_Gabon = sum_country %>% filter(Countryname %in% c("Angola", "Gabon"))
-ggplot(Angola_Gabon , aes(year, percent_vote_Yes, color=Countryname)) +
-  geom_line()
 ```
 
 ```{r}
